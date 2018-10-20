@@ -15,6 +15,7 @@ type TCPClient struct {
 	ReadLock  *sync.Mutex
 	WriteLock *sync.Mutex
 	Server    *TCPServer
+	Request   string
 }
 
 func CreateTCPClient(conn net.Conn, server *TCPServer) *TCPClient {
@@ -23,6 +24,7 @@ func CreateTCPClient(conn net.Conn, server *TCPServer) *TCPClient {
 		ReadLock:  new(sync.Mutex),
 		WriteLock: new(sync.Mutex),
 		Server:    server,
+		Request:   "",
 	}
 }
 func (o *TCPClient) ToString() string {
