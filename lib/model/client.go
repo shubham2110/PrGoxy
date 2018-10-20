@@ -1,8 +1,12 @@
 package model
 
 import (
+	"bufio"
 	"bytes"
 	"net"
+	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -11,30 +15,38 @@ import (
 )
 
 type TCPClient struct {
-	Conn      net.Conn
-	ReadLock  *sync.Mutex
-	WriteLock *sync.Mutex
-	Server    *TCPServer
-	Request   string
+	Conn       net.Conn
+	ReadLock   *sync.Mutex
+	WriteLock  *sync.Mutex
+	Server     *TCPServer
+	Request    *http.Request
+	RawRequest string
 }
 
 func CreateTCPClient(conn net.Conn, server *TCPServer) *TCPClient {
 	return &TCPClient{
-		Conn:      conn,
-		ReadLock:  new(sync.Mutex),
-		WriteLock: new(sync.Mutex),
-		Server:    server,
-		Request:   "",
+		Conn:       conn,
+		ReadLock:   new(sync.Mutex),
+		WriteLock:  new(sync.Mutex),
+		Server:     server,
+		Request:    &http.Request{},
+		RawRequest: "",
 	}
 }
 func (o *TCPClient) ToString() string {
 	return o.Conn.RemoteAddr().String()
 }
 
+func (o *TCPClient) ResponseAndAbort(response string) {
+	o.Write([]byte(response))
+	o.Server.DeleteTCPClient(o)
+}
+
 func (o *TCPClient) Close() {
 	log.Info("Closeing client: %s", o.ToString())
 	o.Conn.Close()
 }
+
 func (o *TCPClient) ReadUntil(token string) string {
 	inputBuffer := make([]byte, 1)
 	var outputBuffer bytes.Buffer
@@ -128,5 +140,97 @@ func (o *TCPClient) Write(data []byte) int {
 }
 
 func (o *TCPClient) PrGoxy() {
+	// Client handler
+	o.ClientFilterHandler()
 
+	// Read whole request
+	o.RawRequest = o.ReadUntil("\r\n\r\n")
+	// Parse request
+	request, err := http.ReadRequest(bufio.NewReader(strings.NewReader(o.RawRequest)))
+	if err != nil {
+		log.Error("Parse request failed")
+		o.ResponseAndAbort("Invalid request")
+	}
+	o.Request = request
+
+	// Website handler
+	o.SiteFilterHandler()
+	// Redirect handler
+	o.RedirectHandler()
+	// Cache handler
+	o.CacheHandler()
+	// Proxy handler
+	o.ProxyHandler()
+}
+
+func (o *TCPClient) ClientFilterHandler() {
+	// for _, v := range(config.hosts) {
+	// 	// check if 127.0.0.1:22537 starts with 127.0.0.1
+	// 	if strings.HasPrefix(o.Conn.RemoteAddr().String(), v) {
+	// 		// blocked
+	// 		o.ResponseAndAbort("Not allowed")
+	// 	}
+	// }
+}
+
+func (o *TCPClient) SiteFilterHandler() {
+
+}
+
+func (o *TCPClient) RedirectHandler() {
+
+}
+
+func (o *TCPClient) CacheHandler() {
+
+}
+
+func (o *TCPClient) ProxyHandler() {
+	var err error
+	/*
+		type URL struct {
+			Scheme     string
+			Opaque     string    // encoded opaque data
+			User       *Userinfo // username and password information
+			Host       string    // host or host:port
+			Path       string    // path (relative paths may omit leading slash)
+			RawPath    string    // encoded path hint (see EscapedPath method)
+			ForceQuery bool      // append a query ('?') even if RawQuery is empty
+			RawQuery   string    // encoded query values, without '?'
+			Fragment   string    // fragment for references, without '#'
+		}
+	*/
+	/*
+		log.Info("%s", o.RawRequest)
+		log.Info("%s", o.Request.URL)
+		log.Info("%s", o.Request.URL.Scheme)
+		log.Info("%s", o.Request.URL.Opaque)
+		log.Info("%s", o.Request.URL.User)
+		log.Info("%s", o.Request.URL.Host)
+		log.Info("%s", o.Request.URL.Path)
+		log.Info("%s", o.Request.URL.RawPath)
+		log.Info("%s", o.Request.URL.ForceQuery)
+		log.Info("%s", o.Request.URL.RawQuery)
+		log.Info("%s", o.Request.URL.Fragment)
+	*/
+	// Check scheme
+	if o.Request.URL.Scheme != "http" {
+		o.ResponseAndAbort("Invalid scheme")
+	}
+	// Purify Host && Port
+	dst := strings.Split(o.Request.URL.Host, ":")
+	host := dst[0]
+	port := 80
+	if len(dst) > 1 {
+		port, err = strconv.Atoi(dst[1])
+		if err != nil {
+			o.ResponseAndAbort("Invalid port")
+		}
+	}
+	log.Info("Destination: %s:%d", host, port)
+	// Add X-Forwarded-For Header
+	o.Request.Header["X-Forwarded-For"] = []string{"127.0.0.1"}
+	// Open port of dst host
+	// Transfer data
+	o.Request.Write(os.Stdout)
 }

@@ -21,7 +21,7 @@ func CreateTCPServer(host string, port int16) *TCPServer {
 	}
 }
 
-func (o *TCPServer) toString() string {
+func (o *TCPServer) ToString() string {
 	return fmt.Sprintf("%s:%d", o.Host, o.Port)
 }
 
@@ -37,14 +37,14 @@ func (o *TCPServer) Run() {
 		log.Error("Listen failed: %s", err)
 		return
 	}
-	log.Info(fmt.Sprintf("Server running at: %s", o.toString()))
+	log.Info(fmt.Sprintf("Server running at: %s", o.ToString()))
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			continue
 		}
 		client := CreateTCPClient(conn, o)
-		log.Info("New client %s Connected", client.toString())
+		log.Info("New client %s Connected", client.ToString())
 		o.AddTCPClient(client)
 		go client.PrGoxy()
 	}
