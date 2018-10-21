@@ -17,4 +17,9 @@ HTTP(s) Proxy in Golang
 * https://www.ietf.org/rfc/rfc2817.txt
 
 #### TODO
-* Random case to Bypass blocking
+- [ ] Random case to Bypass blocking
+- [x] Block specific websites
+- [x] Block specific users
+- [x] Redirection
+- [ ] Password sniffer
+- [ ] Supporting for cache

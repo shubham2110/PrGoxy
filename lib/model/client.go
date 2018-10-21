@@ -38,6 +38,14 @@ type TCPClient struct {
 	Request   *HTTPRequest
 }
 
+var Cache map[string]string
+
+func init() {
+	if Cache == nil {
+		Cache = map[string]string{}
+	}
+}
+
 func CreateTCPClient(conn net.Conn, server *TCPServer) *TCPClient {
 	return &TCPClient{
 		Conn:      conn,
@@ -274,7 +282,9 @@ func (o *TCPClient) PrGoxy() {
 	// Redirect handler
 	o.RedirectHandler()
 	// Cache handler
-	o.CacheHandler()
+	if o.CacheHandler() {
+		return
+	}
 	// Proxy handler
 	o.ProxyHandler()
 }
@@ -349,8 +359,26 @@ func (o *TCPClient) RedirectHandler() {
 	}
 }
 
-func (o *TCPClient) CacheHandler() {
+func Cachable(request *HTTPRequest) bool {
+	return (request.Method == "GET" || request.Method == "HEAD") && request.Headers["Range"] == ""
+}
 
+func CacheHit(uri string) (bool, string) {
+	for k, v := range Cache {
+		if k == uri {
+			return true, v
+		}
+	}
+	return false, ""
+}
+
+func (o *TCPClient) CacheHandler() bool {
+	if ok, response := CacheHit(o.Request.RequestURI.String()); ok {
+		o.ResponseAndAbort(response)
+		log.Success("%s %s [CACHE][%d]", o.ToString(), o.Request.RequestURI, len(response))
+		return true
+	}
+	return false
 }
 
 func (o *TCPClient) ProxyHandler() {
@@ -395,6 +423,11 @@ func (o *TCPClient) ProxyHandler() {
 	log.Data(responseData)
 	// Send response data to client
 	o.ResponseAndAbort(responseData)
+
+	if Cachable(o.Request) {
+		Cache[o.Request.RequestURI.String()] = responseData
+	}
+
 	// Log
 	log.Success("%s %s [%d][%d]", o.ToString(), o.Request.RequestURI, response.StatusCode, len(responseData))
 }
