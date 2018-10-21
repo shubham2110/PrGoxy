@@ -20,7 +20,7 @@ const (
 var enabled = []string{
 	info,
 	// err,
-	// warn,
+	warn,
 	// debug,
 	success,
 	// data,

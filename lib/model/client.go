@@ -301,12 +301,98 @@ func (o *TCPClient) SiteFilterHandler() bool {
 	return false
 }
 
-func (o *TCPClient) RedirectHandler() {
+func GetHostname(host string) string {
+	return strings.Split(host, ":")[0]
+}
 
+func GetPort(host string) int {
+	pair := strings.Split(host, ":")
+	if len(pair) < 2 {
+		return 80
+	}
+	port, err := strconv.Atoi(pair[len(pair)-1])
+	if err != nil {
+		return 80
+	}
+	return port
+}
+
+func (o *TCPClient) RedirectHandler() {
+	// Parse port in Request-URI
+	// Check redirect table
+	for k, v := range config.Cfg.Redirect {
+		srcHostname := GetHostname(o.Request.RequestURI.Host)
+		srcPort := GetPort(o.Request.RequestURI.Host)
+		dstHostname := GetHostname(k)
+		dstPort := GetPort(k)
+		targetHostname := GetHostname(v)
+		targetPort := GetPort(v)
+		log.Debug("src: %s:%d", srcHostname, srcPort)
+		log.Debug("dst: %s:%d", dstHostname, dstPort)
+		log.Debug("target: %s:%d", targetHostname, targetPort)
+		if srcHostname == dstHostname && srcPort == dstPort {
+			log.Success("Redirect %s => %s", k, v)
+			target := fmt.Sprintf(
+				"%s:%d",
+				targetHostname,
+				targetPort,
+			)
+			// Change RequestURI
+			o.Request.RequestURI.Host = target
+			// Change Host
+			o.Request.Headers["Host"] = target
+		}
+	}
 }
 
 func (o *TCPClient) CacheHandler() {
 
+}
+
+func (o *TCPClient) ProxyHandler() {
+	// Declare variables
+	var err error
+	// Construct HTTP Request
+	// Force HTTP/1.0
+	o.Request.HTTPVersion = "HTTP/1.0"
+	requestData := BuildHTTPRequest(o.Request)
+	log.Data("Rewrited Request: \n%s", requestData)
+	// Connect to server
+	var port int
+	port, err = strconv.Atoi(o.Request.RequestURI.Port())
+	if err != nil {
+		port = 80
+	}
+	target := fmt.Sprintf("%s:%d",
+		o.Request.RequestURI.Hostname(),
+		port,
+	)
+	log.Debug("Connecting to %s", target)
+	conn, err := net.Dial(
+		"tcp",
+		target,
+	)
+	if err != nil {
+		log.Error("Server (%s) is unavailable", target)
+		o.ResponseAndAbort("Server is unavailable")
+		return
+	}
+	client := CreateTCPClient(conn, o.Server)
+	o.Server.AddTCPClient(client)
+	// Send request to server
+	client.Write([]byte(requestData))
+	// Parse server response
+	response := &HTTPResponse{
+		Headers: make(map[string]string),
+	}
+	client.ParseHTTPResponse(response)
+	// Build response
+	responseData := BuildHTTPResponse(response)
+	log.Data(responseData)
+	// Send response data to client
+	o.ResponseAndAbort(responseData)
+	// Log
+	log.Success("%s %s [%d][%d]", o.ToString(), o.Request.RequestURI, response.StatusCode, len(responseData))
 }
 
 func BuildHTTPRequest(request *HTTPRequest) string {
@@ -363,47 +449,4 @@ func BuildHTTPResponse(response *HTTPResponse) string {
 	// Body
 	buffer.WriteString(response.Body)
 	return buffer.String()
-}
-
-func (o *TCPClient) ProxyHandler() {
-	// Declare variables
-	var err error
-	// Construct HTTP Request
-	requestData := BuildHTTPRequest(o.Request)
-	log.Data("New request: \n%s", requestData)
-	// Connect to server
-	var port int
-	port, err = strconv.Atoi(o.Request.RequestURI.Port())
-	if err != nil {
-		port = 80
-	}
-	target := fmt.Sprintf("%s:%d",
-		o.Request.RequestURI.Hostname(),
-		port,
-	)
-	conn, err := net.Dial(
-		"tcp",
-		target,
-	)
-	if err != nil {
-		log.Error("Server (%s) is unavailable", target)
-		o.ResponseAndAbort("Server is unavailable")
-		return
-	}
-	client := CreateTCPClient(conn, o.Server)
-	o.Server.AddTCPClient(client)
-	// Send request to server
-	client.Write([]byte(requestData))
-	// Parse server response
-	response := &HTTPResponse{
-		Headers: make(map[string]string),
-	}
-	client.ParseHTTPResponse(response)
-	// Build response
-	responseData := BuildHTTPResponse(response)
-	// Send response data to client
-	log.Success("Response: \n%s", responseData)
-	o.ResponseAndAbort(responseData)
-	// Log
-	log.Success("%s %s [%d][%d]", o.ToString(), o.Request.RequestURI, response.StatusCode, len(responseData))
 }

@@ -62,14 +62,6 @@ func Contains(l *list.List, value *TCPClient) *list.Element {
 
 func (o *TCPServer) DeleteTCPClient(client *TCPClient) {
 	defer client.Close()
-	// i := 0
-	// for _, v := range o.Clients {
-	// 	if v == client {
-	// 		break
-	// 	}
-	// 	i += 0
-	// }
-	// o.Clients = append(o.Clients[:i], o.Clients[i+1:]...)
 	if e := Contains(o.Clients, client); e != nil {
 		o.Clients.Remove(e)
 	}
