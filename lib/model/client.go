@@ -196,6 +196,10 @@ func (o *TCPClient) ParseHTTPRequest() {
 			break
 		}
 		pair := strings.Split(line, ": ")
+		if len(pair) != 2 {
+			log.Success("%s", pair)
+			continue
+		}
 		log.Data("%s: %s", pair[0], pair[1])
 		o.Request.Headers[pair[0]] = pair[1]
 	}
