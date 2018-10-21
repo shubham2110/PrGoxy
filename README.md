@@ -41,6 +41,6 @@ go run PrGoxy.go
 - [x] Block specific users
 - [x] Redirection
 - [x] Supporting for cache
+- [x] Use If-Modify-Since to ensure objects in cache is latest
 - [ ] Random case to Bypass blocking
 - [ ] Password sniffer
-- [ ] Use If-Modify-Since to ensure objects in cache is latest
