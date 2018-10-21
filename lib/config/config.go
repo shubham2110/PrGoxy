@@ -17,6 +17,7 @@ type Config struct {
 		Sites []string `sites:"redirect"`
 	} `json:"block"`
 	Redirect map[string]string `json:"redirect"`
+	Cache    bool              `json:cache`
 }
 
 var Cfg Config

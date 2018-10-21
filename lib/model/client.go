@@ -294,7 +294,7 @@ func (o *TCPClient) PrGoxy() {
 	// Redirect handler
 	o.RedirectHandler()
 	// Cache handler
-	if o.CacheHandler() {
+	if config.Cfg.Cache && o.CacheHandler() {
 		return
 	}
 	// Proxy handler
@@ -480,7 +480,6 @@ func (o *TCPClient) ProxyHandler() {
 		Headers: make(map[string]string),
 	}
 	client.ParseHTTPResponse(response)
-	log.Success("Headers: \n\t%s", response.Headers)
 	// Build response
 	responseData := BuildHTTPResponse(response)
 	log.Data(responseData)

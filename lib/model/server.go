@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/WangYihang/PrGoxy/lib/config"
 	"github.com/WangYihang/PrGoxy/lib/util/log"
 )
 
@@ -23,7 +24,11 @@ func CreateTCPServer(host string, port int16) *TCPServer {
 }
 
 func (o *TCPServer) ToString() string {
-	return fmt.Sprintf("%s:%d", o.Host, o.Port)
+	if config.Cfg.Cache {
+		return fmt.Sprintf("%s:%d (Cache enabled)", o.Host, o.Port)
+	} else {
+		return fmt.Sprintf("%s:%d (Cache disabled)", o.Host, o.Port)
+	}
 }
 
 func (o *TCPServer) Run() {
