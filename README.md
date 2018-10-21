@@ -27,7 +27,8 @@ go run PrGoxy.go
     },
     "redirect":{
         "acm.hit.edu.cn":"jwts.hit.edu.cn"
-    }
+    },
+    "cache":false
 }
 ```
 
