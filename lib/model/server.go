@@ -1,6 +1,7 @@
 package model
 
 import (
+	"container/list"
 	"fmt"
 	"net"
 
@@ -10,14 +11,14 @@ import (
 type TCPServer struct {
 	Host    string
 	Port    int16
-	Clients [](*TCPClient)
+	Clients *list.List
 }
 
 func CreateTCPServer(host string, port int16) *TCPServer {
 	return &TCPServer{
 		Host:    host,
 		Port:    port,
-		Clients: make([](*TCPClient), 0),
+		Clients: list.New(),
 	}
 }
 
@@ -44,24 +45,36 @@ func (o *TCPServer) Run() {
 			continue
 		}
 		client := CreateTCPClient(conn, o)
-		log.Info("New client %s Connected", client.ToString())
+		log.Debug("New client %s Connected", client.ToString())
 		o.AddTCPClient(client)
 		go client.PrGoxy()
 	}
 }
 
-func (o *TCPServer) DeleteTCPClient(client *TCPClient) {
-	client.Close()
-	i := 0
-	for _, v := range o.Clients {
-		if v == client {
-			break
+func Contains(l *list.List, value *TCPClient) *list.Element {
+	for e := l.Front(); e != nil; e = e.Next() {
+		if e.Value == value {
+			return e
 		}
-		i += 0
 	}
-	o.Clients = append(o.Clients[:i], o.Clients[i+1:]...)
+	return nil
+}
+
+func (o *TCPServer) DeleteTCPClient(client *TCPClient) {
+	defer client.Close()
+	// i := 0
+	// for _, v := range o.Clients {
+	// 	if v == client {
+	// 		break
+	// 	}
+	// 	i += 0
+	// }
+	// o.Clients = append(o.Clients[:i], o.Clients[i+1:]...)
+	if e := Contains(o.Clients, client); e != nil {
+		o.Clients.Remove(e)
+	}
 }
 
 func (o *TCPServer) AddTCPClient(client *TCPClient) {
-	o.Clients = append(o.Clients, client)
+	o.Clients.PushBack(client)
 }

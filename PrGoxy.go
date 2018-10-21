@@ -1,12 +1,24 @@
 package main
 
-import "github.com/WangYihang/PrGoxy/lib/model"
+import (
+	"time"
+
+	"github.com/WangYihang/PrGoxy/lib/config"
+	"github.com/WangYihang/PrGoxy/lib/model"
+)
 
 func main() {
-	// Load config
-	host := "127.0.0.1"
-	port := 8080
+	// Sync config.json
+	go func() {
+		for {
+			config.Cfg.Reload()
+			time.Sleep(time.Second * 3)
+		}
+	}()
 	// Start server
-	server := model.CreateTCPServer(host, int16(port))
+	server := model.CreateTCPServer(
+		config.Cfg.Proxy.LHost,
+		config.Cfg.Proxy.LPort,
+	)
 	server.Run()
 }

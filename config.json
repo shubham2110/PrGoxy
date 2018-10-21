@@ -1,0 +1,20 @@
+{
+    "proxy":{
+        "lhost":"127.0.0.1",
+        "lport":8080
+    },
+    "block":{
+        "hosts":[
+            "127.0.0.2"
+        ],
+        "sites":[
+            "facebook.com",
+            "twitter.com",
+            "cn.bing.com"
+        ]
+    },
+    "redirect":{
+        "google.com":"baidu.com",
+        "youtube.com":"youku.com"
+    }
+}
