@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -38,11 +39,11 @@ type TCPClient struct {
 	Request   *HTTPRequest
 }
 
-var Cache map[string]string
+var Cache map[string]HTTPResponse
 
 func init() {
 	if Cache == nil {
-		Cache = map[string]string{}
+		Cache = map[string]HTTPResponse{}
 	}
 }
 
@@ -116,6 +117,9 @@ func (o *TCPClient) ReadUntilClean(token string) string {
 }
 
 func (o *TCPClient) ReadSize(size int) string {
+	if size <= 0 {
+		return ""
+	}
 	readSize := 0
 	inputBuffer := make([]byte, 1)
 	var outputBuffer bytes.Buffer
@@ -210,7 +214,9 @@ func (o *TCPClient) ParseHTTPRequest() {
 		}
 		log.Data("%s: %s", pair[0], pair[1])
 		o.Request.Headers[pair[0]] = pair[1]
+
 	}
+
 	// Body
 	if o.Request.Method == "POST" {
 		contentLength, err := strconv.Atoi(o.Request.Headers["Content-Length"])
@@ -220,6 +226,7 @@ func (o *TCPClient) ParseHTTPRequest() {
 		}
 		o.Request.Body = o.ReadSize(contentLength)
 		log.Data("Body: %s", o.Request.Body)
+
 	} else {
 		o.Request.Body = ""
 	}
@@ -262,7 +269,12 @@ func (o *TCPClient) ParseHTTPResponse(response *HTTPResponse) {
 		log.Error("Invalid Content-Length: %s", err)
 		// SHOULD NOT abort connection between client
 	}
-	response.Body = o.ReadSize(contentLength)
+	if contentLength > 0 {
+		response.Body = o.ReadSize(contentLength)
+
+	} else {
+		response.Body = ""
+	}
 }
 
 // Only support HTTP/1.0
@@ -363,33 +375,72 @@ func Cachable(request *HTTPRequest) bool {
 	return (request.Method == "GET" || request.Method == "HEAD") && request.Headers["Range"] == ""
 }
 
-func CacheHit(uri string) (bool, string) {
+func CacheHit(uri string) (bool, HTTPResponse) {
 	for k, v := range Cache {
 		if k == uri {
 			return true, v
 		}
 	}
-	return false, ""
+	return false, HTTPResponse{}
 }
 
+// func IfModifiedSince(request HTTPRequest, lastModified string) {}
+
 func (o *TCPClient) CacheHandler() bool {
+	if !Cachable(o.Request) {
+		return false
+	}
+	var err error
 	if ok, response := CacheHit(o.Request.RequestURI.String()); ok {
-		o.ResponseAndAbort(response)
-		log.Success("%s %s [CACHE][%d]", o.ToString(), o.Request.RequestURI, len(response))
+		// Send If-Modify-Since
+		ifModifySince := time.Time{}
+		if v, ok := response.Headers["Last-Modified"]; ok {
+			ifModifySince, err = http.ParseTime(v)
+			if err != nil {
+				log.Debug("Failed to parse time, %s", err)
+			}
+		} else if v, ok := response.Headers["Date"]; ok {
+			ifModifySince, err = http.ParseTime(v)
+			if err != nil {
+				log.Debug("Failed to parse time, %s", err)
+			}
+		} else {
+			ifModifySince = time.Now()
+		}
+		// Connect to server
+		client := ProxyConnectToServer(o)
+
+		o.Request.Headers["If-Modified-Since"] = ifModifySince.Format(time.RFC1123)
+		client.Write([]byte(BuildHTTPRequest(o.Request)))
+		ifModifySinceResponse := &HTTPResponse{
+			Headers: make(map[string]string),
+		}
+		client.ParseHTTPResponse(ifModifySinceResponse)
+		// If 304 Not Modified
+		//     Send cache
+		// Else
+		//     Save to cache
+		statusCode := ifModifySinceResponse.StatusCode
+		if statusCode == 304 {
+			responseData := BuildHTTPResponse(&response)
+			o.ResponseAndAbort(responseData)
+			log.Success("%s %s %s [CACHE][%d]", o.Request.Method, o.ToString(), o.Request.RequestURI, len(responseData))
+		} else {
+			// Need refresh cache
+			responseData := BuildHTTPResponse(ifModifySinceResponse)
+			o.ResponseAndAbort(responseData)
+			log.Success("%s %s %s [CACHE][%d]", o.Request.Method, o.ToString(), o.Request.RequestURI, len(responseData))
+			// refresh cache
+			log.Success("Renovating cache")
+			Cache[o.Request.RequestURI.String()] = *ifModifySinceResponse
+		}
 		return true
 	}
 	return false
 }
 
-func (o *TCPClient) ProxyHandler() {
-	// Declare variables
+func ProxyConnectToServer(o *TCPClient) *TCPClient {
 	var err error
-	// Construct HTTP Request
-	// Force HTTP/1.0
-	o.Request.HTTPVersion = "HTTP/1.0"
-	requestData := BuildHTTPRequest(o.Request)
-	log.Data("Rewrited Request: \n%s", requestData)
-	// Connect to server
 	var port int
 	port, err = strconv.Atoi(o.Request.RequestURI.Port())
 	if err != nil {
@@ -407,10 +458,21 @@ func (o *TCPClient) ProxyHandler() {
 	if err != nil {
 		log.Error("Server (%s) is unavailable", target)
 		o.ResponseAndAbort("Server is unavailable")
-		return
+		return nil
 	}
 	client := CreateTCPClient(conn, o.Server)
 	o.Server.AddTCPClient(client)
+	return client
+}
+
+func (o *TCPClient) ProxyHandler() {
+	// Construct HTTP Request
+	// Force HTTP/1.0
+	o.Request.HTTPVersion = "HTTP/1.0"
+	requestData := BuildHTTPRequest(o.Request)
+	log.Data("Rewrited Request: \n%s", requestData)
+	// Connect to server
+	client := ProxyConnectToServer(o)
 	// Send request to server
 	client.Write([]byte(requestData))
 	// Parse server response
@@ -418,18 +480,18 @@ func (o *TCPClient) ProxyHandler() {
 		Headers: make(map[string]string),
 	}
 	client.ParseHTTPResponse(response)
+	log.Success("Headers: \n\t%s", response.Headers)
 	// Build response
 	responseData := BuildHTTPResponse(response)
 	log.Data(responseData)
 	// Send response data to client
 	o.ResponseAndAbort(responseData)
 
-	if Cachable(o.Request) {
-		Cache[o.Request.RequestURI.String()] = responseData
-	}
+	// Cache
+	Cache[o.Request.RequestURI.String()] = *response
 
 	// Log
-	log.Success("%s %s [%d][%d]", o.ToString(), o.Request.RequestURI, response.StatusCode, len(responseData))
+	log.Success("%s %s %s [%d][%d]", o.Request.Method, o.ToString(), o.Request.RequestURI, response.StatusCode, len(responseData))
 }
 
 func BuildHTTPRequest(request *HTTPRequest) string {
