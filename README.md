@@ -17,9 +17,10 @@ HTTP(s) Proxy in Golang
 * https://www.ietf.org/rfc/rfc2817.txt
 
 #### TODO
-- [ ] Random case to Bypass blocking
 - [x] Block specific websites
 - [x] Block specific users
 - [x] Redirection
+- [x] Supporting for cache
+- [ ] Random case to Bypass blocking
 - [ ] Password sniffer
-- [ ] Supporting for cache
+- [ ] Use If-Modify-Since to ensure objects in cache is latest
