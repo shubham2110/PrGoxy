@@ -45,3 +45,4 @@ go run PrGoxy.go
 - [ ] Random case to Bypass blocking
 - [ ] Password sniffer
 - [ ] Support for HTTP/1.1
+- [ ] Support for CONNECT Method
