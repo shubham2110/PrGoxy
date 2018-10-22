@@ -214,6 +214,8 @@ func (o *TCPClient) ParseHTTPRequest() {
 		o.Request.Headers[headerKey] = headerValue
 	}
 
+	log.Data("Request Headers: \n\t%s", o.Request.Headers)
+
 	// Body
 	if o.Request.Method == "POST" {
 		contentLength, err := strconv.Atoi(o.Request.Headers["Content-Length"])
@@ -227,6 +229,8 @@ func (o *TCPClient) ParseHTTPRequest() {
 	} else {
 		o.Request.Body = ""
 	}
+	log.Data("Request Body: \n\t%s", o.Request.Body)
+
 }
 
 func LeftStrip(data string) string {
@@ -272,7 +276,7 @@ func (o *TCPClient) ParseHTTPResponse(response *HTTPResponse) {
 		headerValue := LeftStrip(line[index+len(delimiter):])
 		response.Headers[headerKey] = headerValue
 	}
-	log.Data("Headers: \n\t%s", response.Headers)
+	log.Data("Response Headers: \n\t%s", response.Headers)
 
 	// Body
 	contentLength, err := strconv.Atoi(response.Headers["Content-Length"])

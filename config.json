@@ -1,7 +1,7 @@
 {
     "proxy":{
         "lhost":"127.0.0.1",
-        "lport":8080
+        "lport":9090
     },
     "block":{
         "hosts":[
