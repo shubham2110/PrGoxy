@@ -207,14 +207,11 @@ func (o *TCPClient) ParseHTTPRequest() {
 			log.Debug("All header read")
 			break
 		}
-		pair := strings.Split(line, ": ")
-		if len(pair) != 2 {
-			log.Success("%s", pair)
-			continue
-		}
-		log.Data("%s: %s", pair[0], pair[1])
-		o.Request.Headers[pair[0]] = pair[1]
-
+		delimiter := ":"
+		index := strings.Index(line, delimiter)
+		headerKey := line[:index]
+		headerValue := LeftStrip(line[index+len(delimiter):])
+		o.Request.Headers[headerKey] = headerValue
 	}
 
 	// Body
@@ -230,6 +227,18 @@ func (o *TCPClient) ParseHTTPRequest() {
 	} else {
 		o.Request.Body = ""
 	}
+}
+
+func LeftStrip(data string) string {
+	var k int = 0
+	var v rune
+	for k, v = range data {
+		// Check space
+		if v != '\x20' {
+			break
+		}
+	}
+	return data[k:]
 }
 
 func (o *TCPClient) ParseHTTPResponse(response *HTTPResponse) {
@@ -257,9 +266,11 @@ func (o *TCPClient) ParseHTTPResponse(response *HTTPResponse) {
 			log.Debug("All header read")
 			break
 		}
-		pair := strings.Split(line, ": ")
-		log.Data("%s: %s", pair[0], pair[1])
-		response.Headers[pair[0]] = pair[1]
+		delimiter := ":"
+		index := strings.Index(line, delimiter)
+		headerKey := line[:index]
+		headerValue := LeftStrip(line[index+len(delimiter):])
+		response.Headers[headerKey] = headerValue
 	}
 	log.Data("Headers: \n\t%s", response.Headers)
 
@@ -425,6 +436,7 @@ func (o *TCPClient) CacheHandler() bool {
 			responseData := BuildHTTPResponse(&response)
 			o.ResponseAndAbort(responseData)
 			log.Success("%s %s %s [CACHE][%d]", o.Request.Method, o.ToString(), o.Request.RequestURI, len(responseData))
+			log.Success("304 Not modified")
 		} else {
 			// Need refresh cache
 			responseData := BuildHTTPResponse(ifModifySinceResponse)
