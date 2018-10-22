@@ -1,7 +1,7 @@
 # PrGoxy
 
 ```
-HTTP(s) Proxy in Golang
+HTTP(s)/1.0 Proxy in Golang
 ```
 
 #### Usage
@@ -44,3 +44,4 @@ go run PrGoxy.go
 - [x] Use If-Modify-Since to ensure objects in cache is latest
 - [ ] Random case to Bypass blocking
 - [ ] Password sniffer
+- [ ] Support for HTTP/1.1
