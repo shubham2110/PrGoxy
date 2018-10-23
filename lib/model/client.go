@@ -86,7 +86,7 @@ func (o *TCPClient) ReadUntil(token string) string {
 		}
 		outputBuffer.Write(inputBuffer[:n])
 		// If found token, then finish reading
-		if strings.HasSuffix(outputBuffer.String(), token) {
+		if strings.HasSuffix(strings.ToLower(outputBuffer.String()), strings.ToLower(token)) {
 			break
 		}
 	}
@@ -108,7 +108,7 @@ func (o *TCPClient) ReadUntilClean(token string) string {
 		}
 		outputBuffer.Write(inputBuffer[:n])
 		// If found token, then finish reading
-		if strings.HasSuffix(outputBuffer.String(), token) {
+		if strings.HasSuffix(strings.ToLower(outputBuffer.String()), strings.ToLower(token)) {
 			break
 		}
 	}
@@ -369,7 +369,7 @@ func (o *TCPClient) PrGoxy() {
 func (o *TCPClient) ClientFilterHandler() bool {
 	for _, v := range config.Cfg.Block.Hosts {
 		// check if host:port starts with host
-		if strings.HasPrefix(o.Conn.RemoteAddr().String(), v) {
+		if strings.HasPrefix(strings.ToLower(o.Conn.RemoteAddr().String()), strings.ToLower(v)) {
 			// blocked
 			log.Warn("Client (%s) is blocked", v)
 			o.ResponseAndAbort("Your IP is blocked")
