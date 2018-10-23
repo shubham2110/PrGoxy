@@ -8,8 +8,14 @@
             "127.0.0.2"
         ],
         "sites":[
-            "google.com",
-            "youtube.com"
+            "adservice.google.com.hk",
+            "apis.google.com",
+            "clients4.google.com",
+            "fonts.googleapis.com",
+            "www.google-analytics.com",
+            "www.google.cn",
+            "www.google.com",
+            "www.google.com.hk"
         ]
     },
     "redirect":{

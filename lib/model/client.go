@@ -86,7 +86,7 @@ func (o *TCPClient) ReadUntil(token string) string {
 		}
 		outputBuffer.Write(inputBuffer[:n])
 		// If found token, then finish reading
-		if strings.HasSuffix(strings.ToLower(outputBuffer.String()), strings.ToLower(token)) {
+		if strings.HasSuffix(outputBuffer.String(), token) {
 			break
 		}
 	}
@@ -108,7 +108,7 @@ func (o *TCPClient) ReadUntilClean(token string) string {
 		}
 		outputBuffer.Write(inputBuffer[:n])
 		// If found token, then finish reading
-		if strings.HasSuffix(strings.ToLower(outputBuffer.String()), strings.ToLower(token)) {
+		if strings.HasSuffix(outputBuffer.String(), token) {
 			break
 		}
 	}
@@ -369,7 +369,7 @@ func (o *TCPClient) PrGoxy() {
 func (o *TCPClient) ClientFilterHandler() bool {
 	for _, v := range config.Cfg.Block.Hosts {
 		// check if host:port starts with host
-		if strings.HasPrefix(strings.ToLower(o.Conn.RemoteAddr().String()), strings.ToLower(v)) {
+		if strings.HasPrefix(o.Conn.RemoteAddr().String(), v) {
 			// blocked
 			log.Warn("Client (%s) is blocked", v)
 			o.ResponseAndAbort("Your IP is blocked")
@@ -382,7 +382,13 @@ func (o *TCPClient) ClientFilterHandler() bool {
 func (o *TCPClient) SiteFilterHandler() bool {
 	for _, v := range config.Cfg.Block.Sites {
 		// Check hostname is blocked, without any port number
-		if o.Request.RequestURI.Hostname() == v {
+		var host string
+		if o.Request.Method == "CONNECT" {
+			host = strings.ToLower(GetHostname(o.Request.RequestURI.String()))
+		} else {
+			host = o.Request.RequestURI.Hostname()
+		}
+		if host == strings.ToLower(v) {
 			// blocked
 			log.Warn("Website (%s) is blocked", v)
 			o.ResponseAndAbort("This website is blocked")
