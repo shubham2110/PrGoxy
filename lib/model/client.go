@@ -230,6 +230,13 @@ func (o *TCPClient) ParseHTTPRequest() {
 		o.Request.Body = ""
 	}
 	log.Data("Request Body: \n\t%s", o.Request.Body)
+	// log.Info(
+	// 	"%s %s %s %s",
+	// 	o.Request.Method,
+	// 	o.Request.RequestURI,
+	// 	o.Request.HTTPVersion,
+	// 	o.Request.Headers["User-Agent"],
+	// )
 }
 
 func LeftStrip(data string) string {
@@ -312,14 +319,13 @@ func Pipe(in *TCPClient, out *TCPClient, desc string) {
 func (o *TCPClient) HTTPTunnel() {
 	host := GetHostname(o.Request.RequestURI.String())
 	port := GetPort(o.Request.RequestURI.String(), 443)
-	log.Debug("Handling HTTP tunnel to %s:%d", host, port)
 	client := ProxyConnectToServer(o, host, port)
 	if client == nil {
 		log.Error("Server (%s:%d) is unavailable", host, port)
 		o.ResponseAndAbort("Server is unavailable")
 		return
 	}
-	log.Success("Connection to %s:%d established", host, port)
+	log.Info("CONNECT %s:%d", host, port)
 	// HTTP/1.1 200 Connection established
 	response := &HTTPResponse{
 		HTTPVersion:  "HTTP/1.1",
@@ -489,15 +495,13 @@ func (o *TCPClient) CacheHandler() bool {
 		if statusCode == 304 {
 			responseData := BuildHTTPResponse(&response)
 			o.ResponseAndAbort(responseData)
-			log.Success("%s %s %s [CACHE][%d]", o.Request.Method, o.ToString(), o.Request.RequestURI, len(responseData))
-			log.Success("304 Not modified")
+			log.Warn("%s %s %s [CACHE][%d][Not-Modified]", o.Request.Method, o.ToString(), o.Request.RequestURI, len(responseData))
 		} else {
 			// Need refresh cache
 			responseData := BuildHTTPResponse(ifModifySinceResponse)
 			o.ResponseAndAbort(responseData)
-			log.Success("%s %s %s [CACHE][%d]", o.Request.Method, o.ToString(), o.Request.RequestURI, len(responseData))
+			log.Warn("%s %s %s [CACHE][%d][Renovation]", o.Request.Method, o.ToString(), o.Request.RequestURI, len(responseData))
 			// refresh cache
-			log.Success("Renovating cache")
 			Cache[o.Request.RequestURI.String()] = *ifModifySinceResponse
 		}
 		return true
@@ -557,7 +561,7 @@ func (o *TCPClient) ProxyHandler() {
 	Cache[o.Request.RequestURI.String()] = *response
 
 	// Log
-	log.Success("%s %s %s [%d][%d]", o.Request.Method, o.ToString(), o.Request.RequestURI, response.StatusCode, len(responseData))
+	log.Info("%s %s %s [%d][%d]", o.Request.Method, o.ToString(), o.Request.RequestURI, response.StatusCode, len(responseData))
 }
 
 func BuildHTTPRequest(request *HTTPRequest) string {

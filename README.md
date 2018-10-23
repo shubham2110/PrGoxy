@@ -42,7 +42,7 @@ go run PrGoxy.go
 - [x] Redirection
 - [x] Supporting for cache
 - [x] Use If-Modify-Since to ensure objects in cache is latest
+- [x] Support for CONNECT Method
 - [ ] Random case to Bypass blocking
 - [ ] Password sniffer
 - [ ] Support for HTTP/1.1
-- [ ] Support for CONNECT Method

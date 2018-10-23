@@ -2,11 +2,14 @@ package log
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
 	"github.com/fatih/color"
 )
+
+var logger = log.New(os.Stderr, "", log.Ldate|log.Ltime)
 
 const (
 	debug   = "[DEBUG]"
@@ -15,6 +18,7 @@ const (
 	warn    = "[WARN]"
 	success = "[SUCCESS]"
 	data    = "[DATA]"
+	tunnel  = "[TUNNEL]"
 )
 
 var enabled = []string{
@@ -24,6 +28,7 @@ var enabled = []string{
 	// debug,
 	success,
 	// data,
+	tunnel,
 }
 
 func printMessagePrefix(colorNumber color.Attribute, message string) {
@@ -31,11 +36,23 @@ func printMessagePrefix(colorNumber color.Attribute, message string) {
 	color.New(color.FgHiBlack).Printf(formatTime() + " ")
 }
 
+func Tunnel(format string, a ...interface{}) {
+	for _, mode := range enabled {
+		if mode == "[TUNNEL]" {
+			color.Set(color.FgCyan)
+			logger.Print(fmt.Sprintf(format, a...))
+			color.Unset()
+			return
+		}
+	}
+}
+
 func Data(format string, a ...interface{}) {
 	for _, mode := range enabled {
 		if mode == "[DATA]" {
-			printMessagePrefix(color.FgMagenta, mode)
-			fmt.Fprintln(os.Stderr, fmt.Sprintf(format, a...))
+			color.Set(color.FgMagenta)
+			logger.Print(fmt.Sprintf(format, a...))
+			color.Unset()
 			return
 		}
 	}
@@ -44,8 +61,9 @@ func Data(format string, a ...interface{}) {
 func Debug(format string, a ...interface{}) {
 	for _, mode := range enabled {
 		if mode == "[DEBUG]" {
-			printMessagePrefix(color.FgYellow, mode)
-			fmt.Fprintln(os.Stderr, fmt.Sprintf(format, a...))
+			color.Set(color.FgYellow)
+			logger.Print(fmt.Sprintf(format, a...))
+			color.Unset()
 			return
 		}
 	}
@@ -54,8 +72,9 @@ func Debug(format string, a ...interface{}) {
 func Info(format string, a ...interface{}) {
 	for _, mode := range enabled {
 		if mode == "[INFO]" {
-			printMessagePrefix(color.FgBlue, mode)
-			fmt.Fprintln(os.Stderr, fmt.Sprintf(format, a...))
+			color.Set(color.FgBlue)
+			logger.Print(fmt.Sprintf(format, a...))
+			color.Unset()
 			return
 		}
 	}
@@ -64,8 +83,9 @@ func Info(format string, a ...interface{}) {
 func Error(format string, a ...interface{}) {
 	for _, mode := range enabled {
 		if mode == "[ERROR]" {
-			printMessagePrefix(color.FgRed, mode)
-			fmt.Fprintln(os.Stderr, fmt.Sprintf(format, a...))
+			color.Set(color.FgRed)
+			logger.Print(fmt.Sprintf(format, a...))
+			color.Unset()
 			return
 		}
 	}
@@ -73,8 +93,9 @@ func Error(format string, a ...interface{}) {
 func Warn(format string, a ...interface{}) {
 	for _, mode := range enabled {
 		if mode == "[WARN]" {
-			printMessagePrefix(color.FgMagenta, mode)
-			fmt.Fprintln(os.Stderr, fmt.Sprintf(format, a...))
+			color.Set(color.FgMagenta)
+			logger.Print(fmt.Sprintf(format, a...))
+			color.Unset()
 			return
 		}
 	}
@@ -83,15 +104,12 @@ func Warn(format string, a ...interface{}) {
 func Success(format string, a ...interface{}) {
 	for _, mode := range enabled {
 		if mode == "[SUCCESS]" {
-			printMessagePrefix(color.FgGreen, mode)
-			fmt.Fprintln(os.Stderr, fmt.Sprintf(format, a...))
+			color.Set(color.FgGreen)
+			logger.Print(fmt.Sprintf(format, a...))
+			color.Unset()
 			return
 		}
 	}
-}
-
-func CommandPrompt(commandPrompt string) {
-	color.New(color.FgYellow).Print(commandPrompt)
 }
 
 func formatTime() string {
